@@ -59,19 +59,19 @@ const clientConfiguration = {
         loader: ExtractTextPlugin.extract({ fallbackLoader: 'style-loader', loader: ['css-loader', 'sass-loader?sourceMap'] })
       },
       {
-        test:   /\.(png|gif|jpe?g|svg)$/i,
-        loader: 'url-loader',
-        query: {
-          limit: 500000,
-          name: 'img/[name]-[sha512:hash:base64:7].[ext]',
-          publicPath: PATHS.public
-        }
-      },
-      {
         test:   /\.svg$/i,
         loader: 'file-loader',
         query: {
           name: 'svg/[name]-[sha512:hash:base64:7].[ext]',
+          publicPath: PATHS.public
+        }
+      },
+      {
+        test:   /\.(png|gif|jpe?g)$/i,
+        loader: 'url-loader',
+        query: {
+          limit: 500000,
+          name: 'img/[name]-[sha512:hash:base64:7].[ext]',
           publicPath: PATHS.public
         }
       }
