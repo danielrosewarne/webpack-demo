@@ -35,7 +35,17 @@ const serverConfiguration = {
   },
   externals: /^[a-z\-0-9]+$/,
   module: {
-    loaders: [javascriptLoader]
+    loaders: [
+      javascriptLoader,
+      {
+        test:   /\.svg$/i,
+        loader: 'file-loader',
+        query: {
+          name: 'svg/[name]-[sha512:hash:base64:7].[ext]',
+          publicPath: PATHS.public
+        }
+      }
+    ]
   },
   plugins: [
     new CleanWebpackPlugin(['build', 'static']),
