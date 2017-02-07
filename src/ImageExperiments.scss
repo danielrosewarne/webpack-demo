@@ -1,0 +1,33 @@
+$c-white: white;
+
+main.image-experiments {
+  h1 {
+    color: $c-white;
+  }
+
+  div {
+    &.pic1,&.pic2,&.svg1,&.svg2 {
+      background-size: cover;
+      height: 150px;
+      width: 150px;
+      color: white;
+      border: 2px solid white;
+      margin-right: 15px;
+      background-color: gray;
+      background-blend-mode: multiply;
+      font-size: 15px;
+      padding: 20px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    &.pic1 {
+      background-image: url(../assets/img/inline.jpg);
+    }
+    &.pic2 {
+      background-image: url(../assets/img/link.jpg);
+    }
+    &.svg1 {
+      background-image: url(../assets/svg/calendar.svg);
+    }
+  }
+}
