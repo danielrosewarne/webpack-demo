@@ -5,24 +5,31 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import jsonfile from 'jsonfile';
 
-import { renderMarkup } from '../utils/server';
-import App from './App';
+import { renderMarkup } from './utils/server';
+import App from './components/App';
 
 const app = express();
+
+const getAssetPaths = () => {
+  const file = `${process.cwd()}/dist/assets-manifest.json`
+  return jsonfile.readFileSync(file)["client"];
+}
 
 if (process.env.NODE_ENV !== 'development') {
   app.enable('trust proxy');
 }
 
-app.use(express.static('static'));
+const cacheLengthms = 31556952000;
+
+app.use(express.static('dist/client', {
+  etag: true,
+  maxAge: cacheLengthms.toString(),
+  setHeaders: (res) => {
+    res.setHeader('Expires', new Date(Date.now() + cacheLengthms).toUTCString());
+  }
+}));
 
 app.get('/', function (req, res) {
-  function getAssetPaths() {
-    const file = `${process.cwd()}/build/webpack-assets.json`
-    const assetPaths = jsonfile.readFileSync(file)["main"];
-    return assetPaths;
-  }
-
   let html = renderToString(<App />);
   let markup = renderMarkup(html, getAssetPaths());
 

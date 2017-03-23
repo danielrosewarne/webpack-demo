@@ -4,96 +4,120 @@ const webpack = require('webpack');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const WebpackMd5Hash = require('webpack-md5-hash');
 const AssetsPlugin = require('assets-webpack-plugin');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
+
+const dist = path.join(__dirname, 'dist');
 
 const PATHS = {
   src: path.join(__dirname, 'src'),
-  build: path.join(__dirname, 'build'),
+  dist: path.join(__dirname, 'dist'),
+  client: path.join(dist, 'client'),
   assets: path.join(__dirname, 'assets'),
-  static: path.join(__dirname, 'static'),
-  public: 'http://localhost:8081/'
+  public: process.env.CDN_ENDPOINT || 'http://localhost:8081/'
 };
 
-const javascriptLoader = { 
-                          test: /\.js$/,
-                          exclude: /(node_modules)/,
-                          loader: 'babel-loader',
-                          query: {
-                            presets: ['react','es2015']
-                          }
-                        };
+const loaders = [
+  {
+    test: /\.js$/,
+    include: [
+      path.join(__dirname, "src")
+    ],
+    loader: 'babel-loader',
+    query: {
+      presets: ['react','es2015'],
+      cacheDirectory: true
+    }
+  },
+  {
+    test: /\.scss$/, 
+    include: /src/,
+    loader: ExtractTextPlugin.extract('css-loader!sass-loader?sourceMap')
+  },
+  {
+    test:   /\.svg$/i,
+    loader: 'file-loader',
+    include: /src/,
+    query: {
+      name: 'static/svg/[name]-[sha512:hash:base64:7].[ext]',
+      publicPath: PATHS.public
+    }
+  },
+  {
+    test:   /\.(png|gif|jpe?g)$/i,
+    loader: 'url-loader',
+    include: /src/,
+    query: {
+      limit: 500000,
+      name: 'static/img/[name]-[sha512:hash:base64:7].[ext]',
+      publicPath: PATHS.public
+    }
+  }
+];
+
+const assetsPluginInstance = new AssetsPlugin({path: PATHS.dist, filename: 'assets-manifest.json'});
+
+const plugins = [
+  new WebpackMd5Hash(),
+  new ExtractTextPlugin({ filename: 'static/css/style.[chunkhash].css', allChunks: true }),
+  assetsPluginInstance,
+  new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+  new webpack.EnvironmentPlugin({
+    NODE_ENV: 'development'
+  }),
+  new WebpackMd5Hash(),
+  new ExtractTextPlugin({ filename: 'css/style.[hash].css', allChunks: true }),
+  assetsPluginInstance  
+].concat(process.env.NODE_ENV === 'production' ? [
+  new webpack.optimize.UglifyJsPlugin({
+    sourceMap: true,
+    compress: {
+      warnings: true
+    }
+  })
+] : []);
 
 const serverConfiguration = {
   name: 'server',
-  entry: PATHS.src + '/server.js',
+  entry: { server: [PATHS.src + '/server.js']},
   target: 'node',
+  devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'cheap-module-eval-source-map',
   output: {
-    path: PATHS.build,
-    filename: 'server.js',
-    publicPath: '/',
-    libraryTarget: 'commonjs2'
+    path: PATHS.client,
+    filename: '../server.js',
+    libraryTarget: 'commonjs2',
+    publicPath: PATHS.public
   },
   externals: /^[a-z\-0-9]+$/,
-  module: {
-    loaders: [
-      javascriptLoader,
-      {
-        test:   /\.svg$/i,
-        loader: 'file-loader',
-        query: {
-          name: 'svg/[name]-[sha512:hash:base64:7].[ext]',
-          publicPath: PATHS.public
-        }
-      }
-    ]
-  },
-  plugins: [
-    new CleanWebpackPlugin(['build', 'static']),
+  module: { loaders: loaders },
+  plugins: plugins.concat([
     new webpack.NormalModuleReplacementPlugin(/\.(css|scss)$/, 'node-noop')
-  ]
+  ])
 }
 
 const clientConfiguration = {
   name: 'client',
-  entry: PATHS.src + '/client.js',
+  cache: true,
+  entry: { client: [PATHS.src + '/client.js']},
+  target: 'web',
+  devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'cheap-module-eval-source-map',
   output: {
-    path: PATHS.static,
-    filename: 'js/client.[hash].js',      
-    sourceMapFilename: '[file].map'
+    path: PATHS.client,
+    filename: 'js/client.[hash].js',
+    sourceMapFilename: '[file].map',
+    publicPath: PATHS.public
   },
-  module: {
-    loaders: [
-      javascriptLoader,
-      {
-        test: /\.scss$/, 
-        loader: ExtractTextPlugin.extract({ fallbackLoader: 'style-loader', loader: ['css-loader', 'sass-loader?sourceMap'] })
-      },
-      {
-        test:   /\.svg$/i,
-        loader: 'file-loader',
-        query: {
-          name: 'svg/[name]-[sha512:hash:base64:7].[ext]',
-          publicPath: PATHS.public
-        }
-      },
-      {
-        test:   /\.(png|gif|jpe?g)$/i,
-        loader: 'url-loader',
-        query: {
-          limit: 500000,
-          name: 'img/[name]-[sha512:hash:base64:7].[ext]',
-          publicPath: PATHS.public
-        }
-      }
-    ]
+  module: { 
+    loaders: loaders
   },
-  plugins: [
-    new AssetsPlugin({path: path.join(__dirname, 'build')}),
-    new WebpackMd5Hash(),
-    new ExtractTextPlugin({ filename: 'css/style.[chunkhash].css', allChunks: true })
-  ]
+  plugins: plugins.concat([
+    new webpack.EnvironmentPlugin({
+      BROWSER: 'true'
+    })
+  ])
 };
 
 module.exports = function(env) {
-  return [serverConfiguration, clientConfiguration];
+  return [
+    serverConfiguration,
+    clientConfiguration
+  ];
 };
